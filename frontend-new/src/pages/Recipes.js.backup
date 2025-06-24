@@ -1,0 +1,585 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Container, Typography, Button, Grid, Card, CardContent, CardActions, TextField, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, IconButton, Alert } from '@mui/material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { recipeService } from '../services/recipeService';
+import UnitSelect from '../components/UnitSelect';
+
+const Recipes = () => {
+  const navigate = useNavigate();
+  const [recipes, setRecipes] = useState([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [newRecipe, setNewRecipe] = useState({
+    title: '',
+    description: '',
+    ingredients: [{ name: '', quantity: '', unit: 'g' }],
+    sauces: [],
+    portions: 1
+  });
+
+  // Función de validación
+  const validateRecipe = () => {
+    // Validar ingredientes
+    const hasEmptyIngredients = newRecipe.ingredients.some(ingredient => 
+      !ingredient.name.trim() || !ingredient.quantity || !ingredient.unit
+    );
+
+    // Validar salsas
+    const hasEmptySauceIngredients = newRecipe.sauces.some(sauce => 
+      sauce.ingredients.some(ingredient => 
+        !ingredient.name.trim() || !ingredient.quantity
+      )
+    );
+
+    if (hasEmptyIngredients) {
+      setError('Por favor, complete todos los campos de los ingredientes');
+      return false;
+    }
+
+    if (hasEmptySauceIngredients) {
+      setError('Por favor, complete todos los campos de los ingredientes de las salsas');
+      return false;
+    }
+
+    return true;
+  };
+
+  // Funciones para manejar ingredientes
+  const handleAddIngredient = () => {
+    setNewRecipe({
+      ...newRecipe,
+      ingredients: [...newRecipe.ingredients, { name: '', quantity: '', unit: 'g' }]
+    });
+  };
+
+  const handleRemoveIngredient = (index) => {
+    const newIngredients = [...newRecipe.ingredients];
+    newIngredients.splice(index, 1);
+    setNewRecipe({ ...newRecipe, ingredients: newIngredients });
+  };
+
+  const handleIngredientChange = (index, field, value) => {
+    const newIngredients = [...newRecipe.ingredients];
+    newIngredients[index][field] = value;
+    setNewRecipe({ ...newRecipe, ingredients: newIngredients });
+  };
+
+  const handleUnitChange = (index, value) => {
+    handleIngredientChange(index, 'unit', value);
+  };
+  const [error, setError] = useState('');
+
+  // Función para manejar errores
+  const handleError = (err) => {
+    setError(err.message || 'Error desconocido');
+    console.error('Error:', err);
+  };
+
+  // Funciones para manejar salsas
+  const handleAddSauce = () => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    setNewRecipe({
+      ...newRecipe,
+      sauces: [...sauces, { name: '', description: '', ingredients: [] }]
+    });
+  };
+
+  const handleAddSauceIngredient = (sauceIndex) => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    const newSauces = [...sauces];
+    const ingredients = Array.isArray(newSauces[sauceIndex]?.ingredients) ? newSauces[sauceIndex].ingredients : [];
+    newSauces[sauceIndex] = {
+      ...newSauces[sauceIndex],
+      ingredients: [...ingredients, { name: '', quantity: '', unit: 'g' }]
+    };
+    setNewRecipe({ ...newRecipe, sauces: newSauces });
+  };
+
+  const handleRemoveSauce = (index) => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    const newSauces = sauces.filter((_, i) => i !== index);
+    setNewRecipe({ ...newRecipe, sauces: newSauces });
+  };
+
+  const handleRemoveSauceIngredient = (sauceIndex, ingredientIndex) => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    const newSauces = [...sauces];
+    const ingredients = Array.isArray(newSauces[sauceIndex]?.ingredients) ? newSauces[sauceIndex].ingredients : [];
+    newSauces[sauceIndex] = {
+      ...newSauces[sauceIndex],
+      ingredients: ingredients.filter((_, i) => i !== ingredientIndex)
+    };
+    setNewRecipe({ ...newRecipe, sauces: newSauces });
+  };
+
+  const handleSauceNameChange = (index, value) => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    const newSauces = [...sauces];
+    newSauces[index] = { ...newSauces[index], name: value };
+    setNewRecipe({ ...newRecipe, sauces: newSauces });
+  };
+
+  const handleSauceDescriptionChange = (index, value) => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    const newSauces = [...sauces];
+    newSauces[index] = { ...newSauces[index], description: value };
+    setNewRecipe({ ...newRecipe, sauces: newSauces });
+  };
+
+  const handleSauceIngredientNameChange = (sauceIndex, ingredientIndex, value) => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    const newSauces = [...sauces];
+    const ingredients = Array.isArray(newSauces[sauceIndex]?.ingredients) ? newSauces[sauceIndex].ingredients : [];
+    const newIngredients = [...ingredients];
+    newIngredients[ingredientIndex] = { ...newIngredients[ingredientIndex], name: value };
+    newSauces[sauceIndex] = { ...newSauces[sauceIndex], ingredients: newIngredients };
+    setNewRecipe({ ...newRecipe, sauces: newSauces });
+  };
+
+  const handleSauceIngredientQuantityChange = (sauceIndex, ingredientIndex, value) => {
+    const sauces = Array.isArray(newRecipe.sauces) ? newRecipe.sauces : [];
+    const newSauces = [...sauces];
+    const ingredients = Array.isArray(newSauces[sauceIndex]?.ingredients) ? newSauces[sauceIndex].ingredients : [];
+    const newIngredients = [...ingredients];
+    newIngredients[ingredientIndex] = { ...newIngredients[ingredientIndex], quantity: value };
+    newSauces[sauceIndex] = { ...newSauces[sauceIndex], ingredients: newIngredients };
+    setNewRecipe({ ...newRecipe, sauces: newSauces });
+  };
+
+  // Funciones principales
+  const fetchRecipes = async () => {
+    try {
+      const data = await recipeService.fetchRecipes();
+      if (Array.isArray(data)) {
+        setRecipes(data);
+      } else {
+        throw new Error('La respuesta de la API no es un array');
+      }
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  const handleOpenDialog = () => {
+    setOpenDialog(true);
+    setNewRecipe({
+      title: '',
+      description: '',
+      ingredients: [],
+      sauces: [],
+      portions: 1
+    });
+    setSelectedRecipe(null);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      // Validar la receta antes de enviar
+      if (!validateRecipe()) {
+        return;
+      }
+
+      if (selectedRecipe) {
+        // Actualizar receta
+        await recipeService.updateRecipe(selectedRecipe._id, newRecipe);
+        setError('');
+        setOpenDialog(false);
+        // Actualizar lista de recetas
+        fetchRecipes();
+      } else {
+        // Crear nueva receta
+        await recipeService.createRecipe(newRecipe);
+        setError('');
+        setOpenDialog(false);
+        // Actualizar lista de recetas
+        fetchRecipes();
+      }
+    } catch (error) {
+      console.error('Error en handleSubmit:', error);
+      setError(error.response?.data?.error || 'Error al guardar la receta');
+    }
+  };
+
+  const handleEditRecipe = (recipe) => {
+    setSelectedRecipe(recipe);
+    setNewRecipe({
+      ...recipe,
+      sauces: Array.isArray(recipe.sauces) ? recipe.sauces : []
+    });
+    setOpenDialog(true);
+  };
+
+  const handleDeleteRecipe = async (recipeId) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar esta receta?')) {
+      return;
+    }
+
+    try {
+      await recipeService.deleteRecipe(recipeId);
+      setRecipes(recipes.filter(recipe => recipe._id !== recipeId));
+    } catch (error) {
+      setError(error.response?.data?.error || 'Error al eliminar la receta');
+    }
+  };
+
+  // Efectos
+  useEffect(() => {
+    fetchRecipes();
+  }, []);
+
+  useEffect(() => {
+    if (selectedRecipe) {
+      setNewRecipe({
+        ...selectedRecipe,
+        sauces: Array.isArray(selectedRecipe.sauces) ? selectedRecipe.sauces : []
+      });
+    }
+  }, [selectedRecipe]);
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Container maxWidth="lg">
+        <Typography variant="h4" component="h1" gutterBottom>
+          Recetas
+        </Typography>
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<AddIcon />}
+          onClick={handleOpenDialog}
+          sx={{ mb: 2 }}
+        >
+          Nueva Receta
+        </Button>
+        <Grid container spacing={3}>
+          {Array.isArray(recipes) && recipes.length > 0 ? (
+            recipes.map((recipe) => (
+              <Grid item xs={12} sm={6} md={4} key={recipe._id}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h5" component="h2">
+                      {recipe.title}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" component="p">
+                      {recipe.description}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      Porciones: {recipe.portions}
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                      Ingredientes:
+                    </Typography>
+                    <List>
+                      {Array.isArray(recipe.ingredients) ? (
+                        recipe.ingredients.map((ingredient, index) => (
+                          <ListItem key={index}>
+                            <ListItemText
+                              primary={`${ingredient.name} (${ingredient.quantity})`}
+                            />
+                          </ListItem>
+                        ))
+                      ) : (
+                        <Typography variant="body2" color="error">
+                          Error: Ingredientes no válidos
+                        </Typography>
+                      )}
+                    </List>
+                    {recipe.sauces && recipe.sauces.length > 0 && (
+                      <React.Fragment>
+                        <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                          Salsas:
+                        </Typography>
+                        {Array.isArray(recipe.sauces) ? (
+                          recipe.sauces.map((sauce, index) => (
+                            <Card key={index} sx={{ mb: 1 }}>
+                              <CardContent>
+                                <Typography variant="h6">
+                                  {sauce.name}
+                                </Typography>
+                                {sauce.description && (
+                                  <Typography variant="body2" color="textSecondary">
+                                    {sauce.description}
+                                  </Typography>
+                                )}
+                                <Typography variant="subtitle2" sx={{ mt: 1, mb: 1 }}>
+                                  Ingredientes de la Salsa:
+                                </Typography>
+                                <List>
+                                  {Array.isArray(sauce.ingredients) ? (
+                                    sauce.ingredients.map((ingredient, i) => (
+                                      <ListItem key={i}>
+                                        <ListItemText
+                                          primary={`${ingredient.name} (${ingredient.quantity})`}
+                                        />
+                                      </ListItem>
+                                    ))
+                                  ) : (
+                                    <Typography variant="body2" color="error">
+                                      Error: Ingredientes de la salsa no válidos
+                                    </Typography>
+                                  )}
+                                </List>
+                              </CardContent>
+                            </Card>
+                          ))
+                        ) : (
+                          <Typography variant="body2" color="error">
+                            Error: Salsas no válidas
+                          </Typography>
+                        )}
+                      </React.Fragment>
+                    )}
+                  </CardContent>
+                  <CardActions>
+                    <Button
+                      size="small"
+                      onClick={() => handleEditRecipe(recipe)}
+                      startIcon={<EditIcon />}
+                    >
+                      Editar
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      onClick={() => handleDeleteRecipe(recipe._id)}
+                      startIcon={<DeleteIcon />}
+                    >
+                      Eliminar
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))
+          ) : (
+            <Typography variant="h6" color="textSecondary" align="center">
+              No hay recetas disponibles
+            </Typography>
+          )}
+        </Grid>
+
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+          <DialogTitle>
+            {selectedRecipe ? 'Editar Receta' : 'Nueva Receta'}
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              margin="dense"
+              label="Título"
+              fullWidth
+              value={newRecipe.title}
+              onChange={(e) => setNewRecipe({ ...newRecipe, title: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Descripción"
+              fullWidth
+              multiline
+              rows={4}
+              value={newRecipe.description}
+              onChange={(e) => setNewRecipe({ ...newRecipe, description: e.target.value })}
+            />
+            <TextField
+              margin="dense"
+              label="Porciones"
+              type="number"
+              value={newRecipe.portions}
+              onChange={(e) => setNewRecipe({ ...newRecipe, portions: parseInt(e.target.value) })}
+            />
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+              Ingredientes:
+            </Typography>
+            {newRecipe.ingredients.map((ingredient, index) => (
+              <Box key={index} sx={{ 
+                display: 'flex', 
+                gap: 1, 
+                mb: 2, 
+                p: 2,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                width: '100%',
+                maxWidth: 1400,
+              }}>
+                <TextField
+                  sx={{ 
+                    flex: 2,
+                    '& .MuiInputBase-root': {
+                      height: 60,
+                      fontSize: '1rem',
+                      padding: '8px 24px',
+                      '& input': {
+                        padding: '8px 24px',
+                        fontSize: '1rem',
+                      }
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: '1rem',
+                      transform: 'translate(14px, 16px) scale(0.75)',
+                      color: 'rgba(0, 0, 0, 0.54)',
+                    },
+                  }}
+                  label="Nombre"
+                  value={ingredient.name}
+                  onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
+                  required
+                  error={!ingredient.name.trim()}
+                  helperText={!ingredient.name.trim() ? 'Este campo es requerido' : ''}
+                  fullWidth
+                />
+                <TextField
+                  sx={{ 
+                    flex: 1,
+                    '& .MuiInputBase-root': {
+                      height: 60,
+                      fontSize: '1rem',
+                      padding: '8px 24px',
+                      '& input': {
+                        padding: '8px 24px',
+                        fontSize: '1rem',
+                      }
+                    },
+                    '& .MuiInputLabel-root': {
+                      fontSize: '1rem',
+                      transform: 'translate(14px, 16px) scale(0.75)',
+                      color: 'rgba(0, 0, 0, 0.54)',
+                    },
+                  }}
+                  label="Cantidad"
+                  type="number"
+                  value={ingredient.quantity}
+                  onChange={(e) => handleIngredientChange(index, 'quantity', e.target.value)}
+                  required
+                  error={!ingredient.quantity}
+                  helperText={!ingredient.quantity ? 'Este campo es requerido' : ''}
+                  fullWidth
+                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <UnitSelect
+                    value={ingredient.unit}
+                    onChange={(value) => handleUnitChange(index, value)}
+                    sx={{
+                      '& .MuiSelect-root': {
+                        height: 45,
+                        fontSize: '0.9rem',
+                        padding: '8px 20px',
+                        minWidth: 140,
+                        '& .MuiSelect-select': {
+                          padding: '8px 20px',
+                          fontSize: '0.9rem',
+                        }
+                      },
+                    }}
+                  />
+                  <IconButton
+                    onClick={() => handleRemoveIngredient(index)}
+                    color="error"
+                    size="small"
+                    sx={{ ml: 0 }}
+                  >
+                    <DeleteIcon sx={{ fontSize: 20 }} />
+                  </IconButton>
+                </Box>
+              </Box>
+            ))}
+            <Button
+              variant="outlined"
+              onClick={handleAddIngredient}
+              sx={{ mt: 1, mb: 2 }}
+              startIcon={<AddIcon />}
+            >
+              Añadir Ingrediente
+            </Button>
+            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+              Salsas:
+            </Typography>
+            {newRecipe.sauces.map((sauce, sauceIndex) => (
+              <Card key={sauceIndex} sx={{ mb: 1 }}>
+                <CardContent>
+                  <TextField
+                    fullWidth
+                    label="Nombre de la Salsa"
+                    value={sauce.name}
+                    onChange={(e) => handleSauceNameChange(sauceIndex, e.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Descripción"
+                    multiline
+                    rows={2}
+                    value={sauce.description}
+                    onChange={(e) => handleSauceDescriptionChange(sauceIndex, e.target.value)}
+                  />
+                  <Typography variant="subtitle2" sx={{ mt: 1, mb: 1 }}>
+                    Ingredientes de la Salsa:
+                  </Typography>
+                  {sauce.ingredients.map((ingredient, ingredientIndex) => (
+                    <Box key={ingredientIndex} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                      <TextField
+                        sx={{ flex: 1 }}
+                        value={ingredient.name}
+                        onChange={(e) => handleSauceIngredientNameChange(sauceIndex, ingredientIndex, e.target.value)}
+                      />
+                      <TextField
+                        sx={{ flex: 1 }}
+                        value={ingredient.quantity}
+                        onChange={(e) => handleSauceIngredientQuantityChange(sauceIndex, ingredientIndex, e.target.value)}
+                      />
+                      <IconButton
+                        onClick={() => handleRemoveSauceIngredient(sauceIndex, ingredientIndex)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  ))}
+                  <Button
+                    variant="outlined"
+                    onClick={() => handleAddSauceIngredient(sauceIndex)}
+                    sx={{ mt: 1 }}
+                  >
+                    Añadir Ingrediente
+                  </Button>
+                </CardContent>
+                <CardActions>
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => handleRemoveSauce(sauceIndex)}
+                  >
+                    Eliminar Salsa
+                  </Button>
+                </CardActions>
+              </Card>
+            ))}
+            <Button
+              variant="outlined"
+              onClick={handleAddSauce}
+              sx={{ mt: 1 }}
+            >
+              Añadir Salsa
+            </Button>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              variant="contained"
+              color="primary"
+            >
+              {selectedRecipe ? 'Guardar' : 'Crear'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </Box>
+  );
+};
+
+export default Recipes;
