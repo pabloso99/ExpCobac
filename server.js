@@ -72,19 +72,21 @@ const startServer = async () => {
     });
 
     // Load routes
+    console.log('--- Cargando rutas principales ---');
     app.use('/api/auth', require('./src/routes/auth'));
-    console.log('Auth route loaded');
+    console.log('✔️ Ruta /api/auth montada');
     
     app.use('/api/recipes', require('./src/routes/recipes'));
-    console.log('Recipes route loaded');
+    console.log('✔️ Ruta /api/recipes montada');
     
     app.use('/api/sauces', require('./src/routes/sauceRoutes'));
-    console.log('Sauces route loaded');
+    console.log('✔️ Ruta /api/sauces montada');
     
     const usersRouter = require('./src/routes/users');
-    console.log('Users router imported');
+    console.log('✔️ Users router importado');
     app.use('/api/users', usersRouter);
-    console.log('Users route loaded');
+    console.log('✔️ Ruta /api/users montada');
+    console.log('--- Fin de carga de rutas principales ---');
 
     // Ruta de prueba para verificar que el servidor está funcionando
     app.get('/api/test', (req, res) => {
