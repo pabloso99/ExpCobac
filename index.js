@@ -110,12 +110,3 @@ const startServer = async () => {
 
 // Iniciar aplicación
 startServer();
-
-  console.error('\n=== Error del servidor ===');
-  console.error('Error:', error);
-  console.error('Stack:', error.stack);
-  console.error('========================\n');
-});
-
-// Verificar el puerto al iniciar
-checkPort();
