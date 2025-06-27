@@ -15,7 +15,9 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://tranquil-fudge-e45f27.netlify.app'
+    'https://tranquil-fudge-e45f27.netlify.app',
+    'https://gregarious-brioche-9c80d9.netlify.app',
+    'https://lucky-jalebi-181316.netlify.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
