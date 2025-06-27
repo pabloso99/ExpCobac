@@ -111,24 +111,6 @@ const startServer = async () => {
 // Iniciar aplicación
 startServer();
 
-      status: 'ok', 
-      db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-      collections: mongoose.connection.db ? mongoose.connection.db.collections() : []
-    });
-  });
-
-  // Verificar la conexión cada 5 segundos
-  setInterval(() => {
-    console.log('Estado de conexión:', mongoose.connection.readyState);
-    if (mongoose.connection.readyState !== 1) {
-      console.log('Intentando reconectar...');
-      connectWithRetry();
-    }
-  }, 5000);
-});
-
-// Manejar errores de conexión
-server.on('error', (error) => {
   console.error('\n=== Error del servidor ===');
   console.error('Error:', error);
   console.error('Stack:', error.stack);
