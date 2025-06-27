@@ -110,41 +110,6 @@ const startServer = async () => {
 
 // Iniciar aplicación
 startServer();
-  console.error('Error:', err);
-  console.error('Stack:', err.stack);
-  console.error('Método:', req.method);
-  console.error('URL:', req.url);
-  console.error('=== Fin del error ===\n');
-  res.status(500).json({ 
-    error: 'Error interno del servidor',
-    details: err.message 
-  });
-});
-
-// Manejar rutas no encontradas
-app.use((req, res) => {
-  console.log('\n=== Ruta no encontrada ===');
-  console.log('Método:', req.method);
-  console.log('URL:', req.url);
-  console.log('=== Fin de ruta no encontrada ===\n');
-  res.status(404).json({
-    error: 'Ruta no encontrada',
-    message: `No se encontró la ruta ${req.method} ${req.url}`
-  });
-});
-
-const PORT = process.env.PORT || 5000;
-
-// Verificar si el puerto está disponible
-const checkPort = async () => {
-  try {
-    const response = await fetch(`http://localhost:${PORT}`);
-    console.log('El puerto está ocupado:', response.status);
-  } catch (error) {
-    console.log('El puerto está disponible');
-  }
-};
-
 // Iniciar el servidor
 const server = app.listen(PORT, () => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
