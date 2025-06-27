@@ -110,15 +110,7 @@ const startServer = async () => {
 
 // Iniciar aplicación
 startServer();
-// Iniciar el servidor
-const server = app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-  console.log('Estado de MongoDB:', mongoose.connection.readyState);
-  console.log('Conectado a MongoDB:', mongoose.connection.readyState === 1 ? 'Sí' : 'No');
-  
-  // Verificar si el servidor responde
-  app.get('/health', (req, res) => {
-    res.json({ 
+
       status: 'ok', 
       db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
       collections: mongoose.connection.db ? mongoose.connection.db.collections() : []
