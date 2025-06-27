@@ -1,4 +1,4 @@
-export const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+export const BASE_URL = process.env.REACT_APP_API_URL || 'https://expcobac.onrender.com';
 export const API_URL = `${BASE_URL}/api`;
 export const AUTH_URL = `${API_URL}/auth`;
 export const RECIPES_URL = `${API_URL}/recipes`;
