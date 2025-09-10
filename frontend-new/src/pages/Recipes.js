@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Container, Typography, Button, Grid, Card, CardContent, CardActions, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Alert, Autocomplete } from '@mui/material';
+import { Box, Container, Typography, Button, Grid, Card, CardContent, CardActions, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Autocomplete } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { recipeService } from '../services/recipeService';
 import UnitSelect from '../components/UnitSelect';
@@ -14,7 +14,7 @@ const styles = {
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
-  const [error, setError] = useState('');
+
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [newRecipe, setNewRecipe] = useState({ title: '', description: '', ingredients: [{ ingredient: null, quantity: '', unit: 'g' }], sauces: [], portions: 1, steps: [''] });
@@ -69,16 +69,14 @@ export default function Recipes() {
 
   useEffect(() => {
     if (newlyCreatedIngredient) {
-        // Lógica para actualizar el ingrediente en el formulario activo
-        // Esto es un poco complejo porque necesitamos saber qué formulario está activo.
-        // Por ahora, asumiremos que solo puede haber un diálogo abierto a la vez.
-        if (openDialog) { // Si el diálogo de receta está abierto
+        if (openDialog) {
             const lastIngredientIndex = newRecipe.ingredients.length - 1;
-            handleIngredientChange(lastIngredientIndex, 'ingredient', newlyCreatedIngredient);
+            if (lastIngredientIndex >= 0) {
+                handleIngredientChange(lastIngredientIndex, 'ingredient', newlyCreatedIngredient);
+            }
         }
-        // Podríamos añadir una lógica similar para el diálogo de salsas si es necesario
     }
-  }, [newlyCreatedIngredient]);
+  }, [newlyCreatedIngredient, openDialog, newRecipe.ingredients.length, handleIngredientChange]);
 
   const handleOpenDialog = () => {
     setSelectedRecipe(null);

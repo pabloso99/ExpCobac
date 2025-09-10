@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../utils/auth';
-import { authService } from '../services/auth';
+
 import {
   AppBar,
   Toolbar,
@@ -16,11 +16,8 @@ import {
   Tooltip,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
   Person as PersonIcon,
-  Home as HomeIcon,
   Book as BookIcon,
-  Expand as ExplosionIcon,
   SupervisorAccount as AdminIcon,
   ListAlt as ListAltIcon,
 } from '@mui/icons-material';

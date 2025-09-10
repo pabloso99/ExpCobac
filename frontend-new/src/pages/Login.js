@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 
 function Login() {
-  const navigate = useNavigate();
+
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -7,13 +7,11 @@ import {
   Typography,
   Card,
   CardContent,
-  Grid,
-  Paper
+  Grid
 } from '@mui/material';
 
 function Profile() {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   
   // Debug: mostrar el estado del usuario en la consola
   console.log('Usuario en Profile:', user);
