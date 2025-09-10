@@ -9,12 +9,23 @@ router.use(verifyToken, isAdmin);
 // Ruta para obtener todos los usuarios
 router.get('/', async (req, res) => {
     try {
-        const users = await User.find().select('-password');
+        let users = await User.find().select('-password');
         if (!users) {
             console.error('[users.js] No se encontraron usuarios');
             return res.status(404).json({ error: 'No se encontraron usuarios' });
         }
-        return res.json(users);
+
+        // Migración de datos para usuarios antiguos
+        const migratedUsers = users.map(user => {
+            console.log('Procesando usuario:', user);
+            const userObj = user.toObject();
+            if (!userObj.roles || userObj.roles.length === 0) {
+                userObj.roles = [userObj.role || 'user'];
+            }
+            return userObj;
+        });
+
+        return res.json(migratedUsers);
     } catch (error) {
         console.error('[users.js] Error al obtener usuarios:', error);
         if (!res.headersSent) {
@@ -80,6 +91,25 @@ router.delete('/:id', async (req, res) => {
         res.json({ message: 'Usuario eliminado correctamente' });
     } catch (error) {
         res.status(500).json({ error: 'Error al eliminar usuario' });
+    }
+});
+
+// Update user roles (admin only)
+router.put('/:id/roles', async (req, res) => {
+    // En una aplicación real, aquí habría un middleware para verificar que el usuario que hace la petición es admin
+    try {
+        const { roles } = req.body;
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        user.roles = roles;
+        await user.save();
+        res.json(user);
+
+    } catch (error) {
+        res.status(500).json({ message: 'Error al actualizar roles', error: error.message });
     }
 });
 

@@ -6,13 +6,11 @@ const recipeSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    description: {
-        type: String,
-        required: true
-    },
+
     ingredients: [{
-        name: {
-            type: String,
+        ingredient: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Ingredient',
             required: true
         },
         quantity: {
@@ -26,15 +24,25 @@ const recipeSchema = new mongoose.Schema({
         }
     }],
     sauces: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Sauce',
-        required: true
+        sauce: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Sauce',
+            required: true
+        },
+        quantity: {
+            type: Number,
+            required: true,
+            default: 0
+        }
     }],
     portions: {
         type: Number,
         required: true,
         default: 1
     },
+    steps: [{
+        type: String
+    }],
     createdAt: {
         type: Date,
         default: Date.now

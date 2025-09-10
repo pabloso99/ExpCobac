@@ -22,23 +22,23 @@ import {
   Book as BookIcon,
   Expand as ExplosionIcon,
   SupervisorAccount as AdminIcon,
+  ListAlt as ListAltIcon,
 } from '@mui/icons-material';
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, hasRole } = useAuth();
 
-  // Diagnostic log to inspect auth state
-  console.log('[Navbar] User state:', { user, isAdmin });
-  
-  // Use the role from the user object directly if available
-  const hasAdminRole = user?.role === 'admin';
-  console.log('[Navbar] hasAdminRole:', hasAdminRole);
+  const hasAdminRole = hasRole('admin');
+  const hasChefRole = hasRole('chef');
+  const hasProducRole = hasRole('produc');
+  const hasComprasRole = hasRole('compras');
+  const hasAlmacenRole = hasRole('almacen');
+
+  // Diagnostic log
+  console.log('[Navbar] Rendering with roles:', { hasAdminRole, hasChefRole });
   
   const theme = useTheme();
-
-  // Diagnostic log to inspect auth state in Navbar
-  console.log('[Navbar] Rendering with auth state:', { user, isAdmin, hasAdminRole });
   const [anchorElUser, setAnchorElUser] = React.useState(null);
 
   const handleOpenUserMenu = (event) => {
@@ -77,32 +77,64 @@ const Navbar = () => {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button
-              variant="text"
-              onClick={() => navigate('/recipes')}
-              sx={{
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }
-              }}
-            >
-              <BookIcon sx={{ mr: 1 }} />
-              Recetas
-            </Button>
-            <Button
-              variant="text"
-              onClick={() => navigate('/explocion')}
-              sx={{
-                color: 'white',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }
-              }}
-            >
-              <ExplosionIcon sx={{ mr: 1, fontSize: 24 }} />
-              Explocion
-            </Button>
+            {(hasRole('user') || hasChefRole || hasAdminRole) && (
+              <Button
+                variant="text"
+                onClick={() => navigate('/recipes')}
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                <BookIcon sx={{ mr: 1 }} />
+                Recetas
+              </Button>
+            )}
+            {(hasComprasRole || hasAlmacenRole || hasChefRole || hasAdminRole) && (
+              <Button
+                variant="text"
+                onClick={() => navigate('/ingredients')}
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                <ListAltIcon sx={{ mr: 1, fontSize: 24 }} />
+                Ingredientes
+              </Button>
+            )}
+            {(hasAlmacenRole || hasProducRole || hasChefRole || hasAdminRole) && (
+              <Button
+                variant="text"
+                onClick={() => navigate('/production')}
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Producción
+              </Button>
+            )}
+            {(hasComprasRole || hasChefRole || hasAdminRole) && (
+              <Button
+                variant="text"
+                onClick={() => navigate('/costs')}
+                sx={{
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                Costos
+              </Button>
+            )}
             {hasAdminRole && (
               <Button
                 variant="text"

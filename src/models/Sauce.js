@@ -10,13 +10,31 @@ const sauceSchema = new mongoose.Schema({
         type: String
     },
     ingredients: [{
-        name: {
-            type: String,
+        ingredient: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Ingredient',
             required: true
         },
         quantity: {
             type: String,
             required: true
+        },
+        unit: {
+            type: String,
+            required: true,
+            default: 'g'
+        }
+    }],
+    componentSauces: [{
+        sauce: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Sauce',
+            required: true
+        },
+        quantity: {
+            type: Number,
+            required: true,
+            default: 0
         },
         unit: {
             type: String,

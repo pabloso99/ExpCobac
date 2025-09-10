@@ -18,6 +18,15 @@ const ingredientSchema = new mongoose.Schema({
         required: true,
         enum: ['proteínas', 'vegetales', 'frutas', 'cereales', 'lacteos', 'especias', 'aceites', 'otros']
     },
+    price: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    supplier: {
+        type: String,
+        trim: true
+    },
     createdAt: {
         type: Date,
         default: Date.now

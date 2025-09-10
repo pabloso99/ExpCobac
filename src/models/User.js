@@ -1,4 +1,4 @@
-const mongoose = require('../config/db');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
@@ -13,27 +13,15 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    role: {
-        type: String,
-        enum: ['user', 'admin'],
-        default: 'user'
+    roles: {
+        type: [String],
+        enum: ['user', 'chef', 'admin', 'produc', 'compras', 'almacen'],
+        default: ['user']
     },
     createdAt: {
         type: Date,
         default: Date.now
     }
-});
-
-// Middleware para establecer el rol al crear un nuevo usuario
-userSchema.pre('save', function(next) {
-    if (this.isNew && !this.role) {
-        // Si es un nuevo usuario y no tiene rol asignado, se establece como 'user'
-        this.role = 'user';
-        console.log(`[User Model] Asignando rol por defecto: ${this.role} a usuario ${this.email}`);
-    } else {
-        console.log(`[User Model] Usuario ${this.email} tiene rol: ${this.role}`);
-    } 
-    next();
 });
 
 // Middleware para encriptar la contraseña antes de guardar

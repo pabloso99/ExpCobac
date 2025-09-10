@@ -3,56 +3,13 @@ import { Box, Container, Typography, Button, Grid, Card, CardContent, CardAction
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { recipeService } from '../services/recipeService';
 import UnitSelect from '../components/UnitSelect';
+import NewIngredientDialog from '../components/NewIngredientDialog';
 import axios from 'axios';
 import { RECIPES_URL, SAUCES_URL } from '../config/api';
 
-// Helper functions
-const fetchRecipes = async () => {
-  try {
-    const response = await axios.get(RECIPES_URL);
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching recipes:', error);
-    throw error;
-  }
-};
-
-const getSauceInfo = async (sauceId) => {
-  try {
-    const response = await axios.get(`${SAUCES_URL}/${sauceId}`);
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching sauce ${sauceId}:`, error);
-    return null;
-  }
-};
-
-// Estilos globales
 const styles = {
-  formGroup: {
-    mb: 2,
-    '&:last-child': {
-      mb: 0
-    }
-  },
-  ingredientGroup: {
-    display: 'flex',
-    gap: 2,
-    mb: 1,
-    alignItems: 'center'
-  },
-  inputField: {
-    width: '100%'
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: 1,
-    flexWrap: 'wrap'
-  },
-  paper: {
-    p: 2,
-    mb: 2
-  }
+  formGroup: { mb: 2, '&:last-child': { mb: 0 } },
+  ingredientGroup: { display: 'flex', gap: 2, mb: 1, alignItems: 'center' },
 };
 
 export default function Recipes() {
@@ -60,64 +17,153 @@ export default function Recipes() {
   const [error, setError] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
-  const [newRecipe, setNewRecipe] = useState({
-    title: '',
-    description: '',
-    ingredients: [{ name: '', quantity: '', unit: 'g' }],
-    sauces: [],
-    portions: 1
-  });
+  const [newRecipe, setNewRecipe] = useState({ title: '', description: '', ingredients: [{ ingredient: null, quantity: '', unit: 'g' }], sauces: [], portions: 1, steps: [''] });
   const [availableSauces, setAvailableSauces] = useState([]);
   const [openSauceDialog, setOpenSauceDialog] = useState(false);
-  const [newSauce, setNewSauce] = useState({ name: '', description: '', ingredients: [{ name: '', quantity: '', unit: 'g' }] });
+  const [newSauce, setNewSauce] = useState({ name: '', description: '', ingredients: [{ ingredient: null, quantity: '', unit: 'g' }], componentSauces: [] });
+  const [selectedSauce, setSelectedSauce] = useState(null);
+  const [masterIngredients, setMasterIngredients] = useState([]);
+  const [openNewIngredientDialog, setOpenNewIngredientDialog] = useState(false);
+  const [newIngredientName, setNewIngredientName] = useState('');
+  const [newlyCreatedIngredient, setNewlyCreatedIngredient] = useState(null);
 
   const fetchSauces = useCallback(async () => {
     try {
       const response = await axios.get(SAUCES_URL);
-      setAvailableSauces(response.data);
-    } catch (error) {
-      console.error('Error fetching sauces:', error);
+      setAvailableSauces(response.data.filter((sauce, index, self) => index === self.findIndex((s) => s._id === sauce._id)));
+    } catch (err) {
+      console.error('Error fetching sauces:', err);
       setError('Error al cargar las salsas');
     }
   }, []);
 
-  const fetchRecipesWithSauces = useCallback(async () => {
+  const fetchRecipes = useCallback(async () => {
     try {
-      const recipesData = await fetchRecipes();
-      const recipesWithSauces = await Promise.all(
-        recipesData.map(async (recipe) => {
-          const saucesData = await Promise.all(
-            recipe.sauces.map(async (sauceId) => {
-              try {
-                const sauce = await getSauceInfo(sauceId);
-                return sauce;
-              } catch (error) {
-                console.error(`Error fetching sauce ${sauceId}:`, error);
-                return null;
-              }
-            })
-          );
-          return {
-            ...recipe,
-            sauces: saucesData.filter(Boolean)
-          };
-        })
-      );
-      setRecipes(recipesWithSauces);
-    } catch (error) {
-      console.error('Error fetching recipes:', error);
+      const response = await axios.get(RECIPES_URL);
+      setRecipes(response.data);
+    } catch (err) {
+      console.error('Error fetching recipes:', err);
       setError('Error al cargar las recetas');
     }
   }, []);
 
-  useEffect(() => {
-    fetchRecipesWithSauces();
-    fetchSauces();
-  }, [fetchRecipesWithSauces, fetchSauces]);
+  const fetchMasterIngredients = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/ingredients');
+      setMasterIngredients(response.data);
+    } catch (err) {
+      console.error('Error fetching master ingredients:', err);
+    }
+  }, []);
 
-  // Handlers for Sauce Dialog
-  const handleOpenSauceDialog = () => {
-    setNewSauce({ name: '', description: '', ingredients: [{ name: '', quantity: '', unit: 'g' }] });
+  useEffect(() => {
+    fetchSauces();
+    fetchMasterIngredients();
+  }, [fetchSauces, fetchMasterIngredients]);
+
+  useEffect(() => {
+    if (availableSauces.length > 0) {
+        fetchRecipes();
+    }
+  }, [availableSauces, fetchRecipes]);
+
+  useEffect(() => {
+    if (newlyCreatedIngredient) {
+        // Lógica para actualizar el ingrediente en el formulario activo
+        // Esto es un poco complejo porque necesitamos saber qué formulario está activo.
+        // Por ahora, asumiremos que solo puede haber un diálogo abierto a la vez.
+        if (openDialog) { // Si el diálogo de receta está abierto
+            const lastIngredientIndex = newRecipe.ingredients.length - 1;
+            handleIngredientChange(lastIngredientIndex, 'ingredient', newlyCreatedIngredient);
+        }
+        // Podríamos añadir una lógica similar para el diálogo de salsas si es necesario
+    }
+  }, [newlyCreatedIngredient]);
+
+  const handleOpenDialog = () => {
+    setSelectedRecipe(null);
+    setNewRecipe({ title: '', description: '', ingredients: [{ ingredient: null, quantity: '', unit: 'g' }], sauces: [], portions: 1 });
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setError('');
+  };
+
+  const handleEditRecipe = (recipe) => {
+    setSelectedRecipe(recipe);
+    setNewRecipe({
+      ...recipe,
+      ingredients: (recipe.ingredients || []).map(ing => ({ ...ing, ingredient: masterIngredients.find(mi => mi._id === ing.ingredient) })),
+      sauces: (recipe.sauces || []).map(s => availableSauces.find(as => as._id === s.sauce)).filter(Boolean),
+    });
+    setOpenDialog(true);
+  };
+
+  const handleDeleteRecipe = async (recipeId) => {
+    if (window.confirm('¿Estás seguro?')) {
+      try {
+        await recipeService.deleteRecipe(recipeId);
+        fetchRecipes();
+      } catch (err) {
+        setError('Error al eliminar la receta');
+      }
+    }
+  };
+
+  const handleSaveRecipe = async () => {
+    const payload = {
+      ...newRecipe,
+      ingredients: (newRecipe.ingredients || []).filter(ing => ing.ingredient).map(ing => ({ ...ing, ingredient: ing.ingredient._id })),
+      steps: (newRecipe.steps || []).filter(step => step.trim() !== ''),
+      sauces: newRecipe.sauces.map(s => ({ sauce: s._id, quantity: s.quantity || 0 }))
+    };
+    try {
+      if (selectedRecipe) {
+        await recipeService.updateRecipe(selectedRecipe._id, payload);
+      } else {
+        await recipeService.createRecipe(payload);
+      }
+      fetchRecipes();
+      handleCloseDialog();
+    } catch (err) {
+      setError('Error al guardar la receta');
+    }
+  };
+
+  const handleIngredientChange = (index, field, value) => {
+    const updatedIngredients = [...newRecipe.ingredients];
+    updatedIngredients[index][field] = value;
+    setNewRecipe({ ...newRecipe, ingredients: updatedIngredients });
+  };
+
+  const addIngredient = () => setNewRecipe({ ...newRecipe, ingredients: [...newRecipe.ingredients, { ingredient: null, quantity: '', unit: 'g' }] });
+  const removeIngredient = (index) => setNewRecipe({ ...newRecipe, ingredients: newRecipe.ingredients.filter((_, i) => i !== index) });
+
+  const handleStepChange = (index, value) => {
+    const updatedSteps = [...newRecipe.steps];
+    updatedSteps[index] = value;
+    setNewRecipe({ ...newRecipe, steps: updatedSteps });
+  };
+
+  const addStep = () => {
+    setNewRecipe({ ...newRecipe, steps: [...newRecipe.steps, ''] });
+  };
+
+  const removeStep = (index) => {
+    const updatedSteps = newRecipe.steps.filter((_, i) => i !== index);
+    setNewRecipe({ ...newRecipe, steps: updatedSteps });
+  };
+
+  const handleOpenSauceDialog = (sauce = null) => {
+    if (sauce) {
+        setSelectedSauce(sauce);
+        setNewSauce({ ...sauce, ingredients: (sauce.ingredients || []).map(ing => ({ ...ing, ingredient: masterIngredients.find(mi => mi._id === ing.ingredient) })), componentSauces: sauce.componentSauces || [] });
+    } else {
+        setSelectedSauce(null);
+        setNewSauce({ name: '', description: '', ingredients: [{ ingredient: null, quantity: '', unit: 'g' }], componentSauces: [] });
+    }
     setOpenSauceDialog(true);
   };
 
@@ -126,18 +172,37 @@ export default function Recipes() {
     setError('');
   };
 
+  const handleDeleteSauce = async (sauceId) => {
+    if (window.confirm('¿Estás seguro?')) {
+      try {
+        await axios.delete(`${SAUCES_URL}/${sauceId}`);
+        fetchSauces();
+      } catch (err) {
+        setError('Error al eliminar salsa');
+      }
+    }
+  };
+
   const handleSaveSauce = async () => {
     if (!newSauce.name.trim()) {
       setError('El nombre de la salsa es requerido');
       return;
     }
+    const payload = {
+        ...newSauce,
+        ingredients: newSauce.ingredients.filter(i => i.ingredient).map(i => ({ ...i, ingredient: i.ingredient._id })),
+        componentSauces: (newSauce.componentSauces || []).map(cs => ({ sauce: cs.sauce, quantity: cs.quantity, unit: cs.unit }))
+    };
     try {
-      await axios.post(SAUCES_URL, newSauce);
-      handleCloseSauceDialog();
-      fetchSauces(); // Refresh sauces list
-    } catch (error) {
-      console.error('Error al guardar salsa:', error);
-      setError('Error al guardar la salsa');
+        if (selectedSauce) {
+            await axios.put(`${SAUCES_URL}/${selectedSauce._id}`, payload);
+        } else {
+            await axios.post(SAUCES_URL, payload);
+        }
+        fetchSauces();
+        handleCloseSauceDialog();
+    } catch (err) {
+        setError('Error al guardar la salsa');
     }
   };
 
@@ -147,291 +212,195 @@ export default function Recipes() {
     setNewSauce({ ...newSauce, ingredients: updatedIngredients });
   };
 
-  const addSauceIngredient = () => {
-    setNewSauce({ ...newSauce, ingredients: [...newSauce.ingredients, { name: '', quantity: '', unit: 'g' }] });
+  const addSauceIngredient = () => setNewSauce({ ...newSauce, ingredients: [...newSauce.ingredients, { ingredient: null, quantity: '', unit: 'g' }] });
+  const removeSauceIngredient = (index) => setNewSauce({ ...newSauce, ingredients: newSauce.ingredients.filter((_, i) => i !== index) });
+
+  const handleComponentSauceChange = (index, field, value) => {
+    const updated = [...newSauce.componentSauces];
+    updated[index][field] = value;
+    setNewSauce({ ...newSauce, componentSauces: updated });
   };
 
-  const removeSauceIngredient = (index) => {
-    const updatedIngredients = [...newSauce.ingredients];
-    updatedIngredients.splice(index, 1);
-    setNewSauce({ ...newSauce, ingredients: updatedIngredients });
+  const addComponentSauce = (sauce) => {
+    if (sauce && !(newSauce.componentSauces || []).find(cs => cs.sauce === sauce._id)) {
+        setNewSauce({ ...newSauce, componentSauces: [...(newSauce.componentSauces || []), { sauce: sauce._id, name: sauce.name, quantity: 1, unit: 'g' }] });
+    }
   };
 
-  // Funciones de manejo de eventos
-  const handleOpenDialog = () => {
-    setOpenDialog(true);
-    setNewRecipe({
-      title: '',
-      description: '',
-      ingredients: [{ name: '', quantity: '', unit: 'g' }],
-      sauces: [], 
-      portions: 1
-    });
-    setSelectedRecipe(null);
+  const removeComponentSauce = (index) => setNewSauce({ ...newSauce, componentSauces: newSauce.componentSauces.filter((_, i) => i !== index) });
+
+  const handleOpenNewIngredientDialog = (name) => {
+    setNewIngredientName(name);
+    setOpenNewIngredientDialog(true);
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setSelectedRecipe(null);
-    setError('');
+  const handleCloseNewIngredientDialog = () => {
+    setOpenNewIngredientDialog(false);
+    setNewIngredientName('');
+    setNewlyCreatedIngredient(null);
   };
 
-  const handleEditRecipe = (recipe) => {
-    setOpenDialog(true);
-    setSelectedRecipe(recipe);
-    setNewRecipe({
-      title: recipe.title,
-      description: recipe.description,
-      ingredients: recipe.ingredients,
-      sauces: recipe.sauces || [],
-      portions: recipe.portions
-    });
-  };
-
-  const handleDeleteRecipe = async (recipeId) => {
+  const handleSaveNewIngredient = async (ingredientData) => {
     try {
-      await recipeService.deleteRecipe(recipeId);
-      const updatedRecipes = recipes.filter(recipe => recipe._id !== recipeId);
-      setRecipes(updatedRecipes);
-      setError('');
-    } catch (error) {
-      console.error('Error al eliminar receta:', error);
-      setError('Error al eliminar la receta');
+      const response = await axios.post('http://localhost:5000/api/ingredients', ingredientData);
+      const newIng = response.data;
+      setMasterIngredients(prev => [...prev, newIng]);
+      setNewlyCreatedIngredient(newIng);
+      handleCloseNewIngredientDialog();
+    } catch (err) {
+      console.error('Error creating new ingredient:', err);
+      // Aquí podrías mostrar un error en el diálogo de creación
     }
-  };
-
-  const handleSaveRecipe = async () => {
-    if (!validateRecipe()) return;
-
-    try {
-      const recipeData = {
-        title: newRecipe.title,
-        description: newRecipe.description,
-        ingredients: newRecipe.ingredients,
-        sauces: newRecipe.sauces,
-        portions: newRecipe.portions
-      };
-
-      if (selectedRecipe) {
-        await recipeService.updateRecipe(selectedRecipe._id, recipeData);
-        setOpenDialog(false);
-        await fetchRecipesWithSauces();
-      } else {
-        await recipeService.createRecipe(recipeData);
-        setOpenDialog(false);
-        setNewRecipe({
-          title: '',
-          description: '',
-          ingredients: [{ name: '', quantity: '', unit: 'g' }],
-          sauces: [],
-          portions: 1
-        });
-        await fetchRecipesWithSauces();
-      }
-    } catch (error) {
-      console.error('Error al guardar receta:', error);
-      setError('Error al guardar la receta');
-    }
-  };
-
-  const validateRecipe = () => {
-    if (!newRecipe.title.trim()) {
-      setError('El título es requerido');
-      return false;
-    }
-    if (!newRecipe.description.trim()) {
-      setError('La descripción es requerida');
-      return false;
-    }
-    if (newRecipe.ingredients.length === 0) {
-      setError('Debe agregar al menos un ingrediente');
-      return false;
-    }
-    return true;
   };
 
   return (
     <Container>
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Box>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenSauceDialog} sx={{ mr: 2 }}>
-              Crear Salsa
-            </Button>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenDialog}>
-              Crear Receta
-            </Button>
-          </Box>
-        </Grid>
+      <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenSauceDialog()}>Crear Salsa</Button>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenDialog}>Crear Receta</Button>
+      </Box>
 
-        <Grid item xs={12}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          <Grid container spacing={3}>
-            {recipes.map((recipe) => (
-              <Grid item key={recipe._id} xs={12} sm={6} md={4}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h5" component="div">
-                      {recipe.title}
-                    </Typography>
-                  </CardContent>
-                  <CardActions>
-                    <IconButton onClick={() => handleEditRecipe(recipe)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDeleteRecipe(recipe._id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </CardActions>
-                </Card>
-              </Grid>
-            ))}
+      <Typography variant="h5" gutterBottom>Salsas Disponibles</Typography>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {availableSauces.map(sauce => (
+          <Grid item key={sauce._id} xs={12} sm={6} md={4}>
+            <Card><CardContent><Typography variant="h6">{sauce.name}</Typography></CardContent><CardActions>
+              <IconButton onClick={() => handleOpenSauceDialog(sauce)}><EditIcon /></IconButton>
+              <IconButton onClick={() => handleDeleteSauce(sauce._id)}><DeleteIcon /></IconButton>
+            </CardActions></Card>
           </Grid>
-        </Grid>
+        ))}
       </Grid>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <Typography variant="h5" gutterBottom>Recetas</Typography>
+      <Grid container spacing={3}>
+        {recipes.map((recipe) => (
+          <Grid item key={recipe._id} xs={12} sm={6} md={4}>
+            <Card><CardContent><Typography variant="h5">{recipe.title}</Typography></CardContent><CardActions>
+              <IconButton onClick={() => handleEditRecipe(recipe)}><EditIcon /></IconButton>
+              <IconButton onClick={() => handleDeleteRecipe(recipe._id)}><DeleteIcon /></IconButton>
+            </CardActions></Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      {/* Recipe Dialog */}
+      <Dialog open={openDialog} onClose={(e, r) => r !== 'backdropClick' && handleCloseDialog()} fullWidth maxWidth="md">
         <DialogTitle>{selectedRecipe ? 'Editar Receta' : 'Nueva Receta'}</DialogTitle>
         <DialogContent>
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Título"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={newRecipe.title}
-            onChange={(e) => setNewRecipe({ ...newRecipe, title: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Descripción"
-            type="text"
-            fullWidth
-            multiline
-            rows={4}
-            variant="outlined"
-            value={newRecipe.description}
-            onChange={(e) => setNewRecipe({ ...newRecipe, description: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          
+          <TextField autoFocus margin="dense" label="Título" value={newRecipe.title} onChange={(e) => setNewRecipe({ ...newRecipe, title: e.target.value })} fullWidth sx={styles.formGroup} />
+
+          <TextField label="Porciones" type="number" value={newRecipe.portions} onChange={(e) => setNewRecipe({ ...newRecipe, portions: parseInt(e.target.value, 10) || 1 })} fullWidth sx={styles.formGroup} />
+
           <Typography variant="h6" sx={{ mt: 2 }}>Ingredientes</Typography>
           {newRecipe.ingredients.map((ing, index) => (
             <Box key={index} sx={styles.ingredientGroup}>
-              <TextField
-                label="Nombre"
-                value={ing.name}
-                onChange={(e) => {
-                  const newIngredients = [...newRecipe.ingredients];
-                  newIngredients[index].name = e.target.value;
-                  setNewRecipe({ ...newRecipe, ingredients: newIngredients });
+              <Autocomplete
+                freeSolo
+                options={masterIngredients}
+                getOptionLabel={(option) => option.name || ''}
+                value={ing.ingredient}
+                onChange={(event, newValue) => {
+                  if (typeof newValue === 'string') {
+                    setTimeout(() => {
+                      handleOpenNewIngredientDialog(newValue);
+                    });
+                  } else if (newValue && newValue.inputValue) {
+                    handleOpenNewIngredientDialog(newValue.inputValue);
+                  } else {
+                    handleIngredientChange(index, 'ingredient', newValue);
+                  }
                 }}
-                sx={{ flex: 3 }}
-              />
-              <TextField
-                label="Cantidad"
-                type="number"
-                value={ing.quantity}
-                onChange={(e) => {
-                  const newIngredients = [...newRecipe.ingredients];
-                  newIngredients[index].quantity = e.target.value;
-                  setNewRecipe({ ...newRecipe, ingredients: newIngredients });
+                filterOptions={(options, params) => {
+                  const filtered = options.filter(option =>
+                    option.name.toLowerCase().includes(params.inputValue.toLowerCase())
+                  );
+
+                  if (params.inputValue !== '' && !filtered.some(option => option.name.toLowerCase() === params.inputValue.toLowerCase())) {
+                    filtered.push({
+                      inputValue: params.inputValue,
+                      name: `Añadir "${params.inputValue}"`,
+                    });
+                  }
+
+                  return filtered;
                 }}
-                sx={{ flex: 1 }}
+                renderInput={(params) => <TextField {...params} label="Ingrediente" />}
+                sx={{ flexGrow: 1 }}
               />
-              <UnitSelect
-                value={ing.unit}
-                onChange={(e) => {
-                  const newIngredients = [...newRecipe.ingredients];
-                  newIngredients[index].unit = e.target.value;
-                  setNewRecipe({ ...newRecipe, ingredients: newIngredients });
-                }}
-                sx={{ flex: 1 }}
-              />
-              <IconButton onClick={() => {
-                const newIngredients = newRecipe.ingredients.filter((_, i) => i !== index);
-                setNewRecipe({ ...newRecipe, ingredients: newIngredients });
-              }}>
-                <DeleteIcon />
-              </IconButton>
+              <TextField label="Cantidad" type="number" value={ing.quantity} onChange={(e) => handleIngredientChange(index, 'quantity', e.target.value)} sx={{ width: '100px' }} />
+              <UnitSelect value={ing.unit} onChange={(v) => handleIngredientChange(index, 'unit', v)} />
+              <IconButton onClick={() => removeIngredient(index)}><DeleteIcon /></IconButton>
             </Box>
           ))}
-          <Button onClick={() => {
-            setNewRecipe({ ...newRecipe, ingredients: [...newRecipe.ingredients, { name: '', quantity: '', unit: 'g' }] });
-          }} sx={{ mt: 1 }}>
-            Añadir Ingrediente
-          </Button>
+          <Button onClick={addIngredient} sx={{ mt: 1 }}>Añadir Ingrediente</Button>
+
+          <Typography variant="h6" sx={{ mt: 2 }}>Pasos</Typography>
+          {(newRecipe.steps || []).map((step, index) => (
+            <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+              <TextField
+                label={`Paso ${index + 1}`}
+                value={step}
+                onChange={(e) => handleStepChange(index, e.target.value)}
+                fullWidth
+                multiline
+              />
+              <IconButton onClick={() => removeStep(index)}><DeleteIcon /></IconButton>
+            </Box>
+          ))}
+          <Button onClick={addStep} sx={{ mt: 1 }}>Añadir Paso</Button>
 
           <Typography variant="h6" sx={{ mt: 2 }}>Salsas</Typography>
-          <Autocomplete
-            multiple
-            options={availableSauces}
-            getOptionLabel={(option) => option.name}
-            value={newRecipe.sauces}
-            onChange={(event, newValue) => {
-              setNewRecipe({ ...newRecipe, sauces: newValue });
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="outlined"
-                label="Salsas"
-                placeholder="Seleccionar salsas"
-              />
-            )}
-            isOptionEqualToValue={(option, value) => option._id === value._id}
-            sx={{ mb: 2 }}
-          />
-          
-          <TextField
-            label="Porciones"
-            type="number"
-            fullWidth
-            value={newRecipe.portions}
-            onChange={(e) => setNewRecipe({ ...newRecipe, portions: parseInt(e.target.value, 10) || 1 })}
-            sx={{ mt: 2 }}
-          />
+          <Autocomplete multiple options={availableSauces} getOptionLabel={(o) => o.name} value={newRecipe.sauces} isOptionEqualToValue={(o, v) => o._id === v._id} onChange={(e, v) => setNewRecipe({ ...newRecipe, sauces: v })} renderInput={(p) => <TextField {...p} label="Añadir Salsas" />} sx={{ mb: 2 }} />
+          {newRecipe.sauces.map((sauce, index) => (
+            <Box key={sauce._id} sx={styles.ingredientGroup}>
+              <TextField label="Salsa" value={sauce.name} disabled sx={{ flexGrow: 1 }} />
+              <TextField label="Cantidad (g)" type="number" value={sauce.quantity || ''} onChange={(e) => setNewRecipe({ ...newRecipe, sauces: newRecipe.sauces.map((s, i) => i === index ? { ...s, quantity: parseInt(e.target.value, 10) } : s) })} sx={{ width: '120px' }} />
+            </Box>
+          ))}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button onClick={handleSaveRecipe} variant="contained">Guardar</Button>
-        </DialogActions>
+        <DialogActions><Button onClick={handleCloseDialog}>Cancelar</Button><Button onClick={handleSaveRecipe} variant="contained">Guardar</Button></DialogActions>
       </Dialog>
-      {/* Sauce Creation Dialog */}
-      <Dialog open={openSauceDialog} onClose={handleCloseSauceDialog} maxWidth="md" fullWidth>
-        <DialogTitle>Crear Nueva Salsa</DialogTitle>
+
+      {/* Sauce Dialog */}
+      <Dialog open={openSauceDialog} onClose={(e, r) => r !== 'backdropClick' && handleCloseSauceDialog()} fullWidth maxWidth="sm">
+        <DialogTitle>{selectedSauce ? 'Editar Salsa' : 'Nueva Salsa'}</DialogTitle>
         <DialogContent>
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-          <Box sx={styles.formGroup}>
-            <TextField label="Nombre de la Salsa" value={newSauce.name} onChange={(e) => setNewSauce({ ...newSauce, name: e.target.value })} fullWidth />
-          </Box>
-          <Box sx={styles.formGroup}>
-            <TextField label="Descripción" value={newSauce.description} onChange={(e) => setNewSauce({ ...newSauce, description: e.target.value })} fullWidth multiline rows={3} />
-          </Box>
-          <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>Ingredientes de la Salsa</Typography>
+          <TextField autoFocus margin="dense" label="Nombre" value={newSauce.name} onChange={(e) => setNewSauce({ ...newSauce, name: e.target.value })} fullWidth sx={styles.formGroup} />
+          <TextField label="Descripción" value={newSauce.description} onChange={(e) => setNewSauce({ ...newSauce, description: e.target.value })} fullWidth multiline rows={2} sx={styles.formGroup} />
+
+          <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>Ingredientes</Typography>
           {newSauce.ingredients.map((ing, index) => (
             <Box key={index} sx={styles.ingredientGroup}>
-              <TextField label="Nombre" value={ing.name} onChange={(e) => handleSauceIngredientChange(index, 'name', e.target.value)} sx={{ flex: 3 }} />
-              <TextField label="Cantidad" value={ing.quantity} onChange={(e) => handleSauceIngredientChange(index, 'quantity', e.target.value)} sx={{ flex: 1 }} />
-              <UnitSelect value={ing.unit} onChange={(e) => handleSauceIngredientChange(index, 'unit', e.target.value)} />
+              <Autocomplete options={masterIngredients} getOptionLabel={(o) => o.name || ''} value={ing.ingredient} onChange={(e, v) => handleSauceIngredientChange(index, 'ingredient', v)} isOptionEqualToValue={(o, v) => o._id === v._id} renderInput={(p) => <TextField {...p} label="Ingrediente" />} sx={{ flexGrow: 1 }} />
+              <TextField label="Cantidad" type="number" value={ing.quantity} onChange={(e) => handleSauceIngredientChange(index, 'quantity', e.target.value)} sx={{ width: '100px' }} />
+              <UnitSelect value={ing.unit} onChange={(v) => handleSauceIngredientChange(index, 'unit', v)} />
               <IconButton onClick={() => removeSauceIngredient(index)}><DeleteIcon /></IconButton>
             </Box>
           ))}
           <Button onClick={addSauceIngredient} sx={{ mt: 1 }}>Añadir Ingrediente</Button>
+
+          <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>Salsas Componentes</Typography>
+          <Autocomplete options={availableSauces.filter(s => s._id !== selectedSauce?._id)} getOptionLabel={(o) => o.name} onChange={(e, v) => v && addComponentSauce(v)} renderInput={(p) => <TextField {...p} label="Buscar y añadir salsa" />} sx={{ mb: 2 }} />
+          {(newSauce.componentSauces || []).map((cs, index) => (
+            <Box key={index} sx={styles.ingredientGroup}>
+              <TextField label="Salsa Componente" value={cs.name} disabled sx={{ flexGrow: 1 }} />
+              <TextField label="Cantidad" type="number" value={cs.quantity} onChange={(e) => handleComponentSauceChange(index, 'quantity', e.target.value)} sx={{ width: '100px' }} />
+              <UnitSelect value={cs.unit} onChange={(v) => handleComponentSauceChange(index, 'unit', v)} />
+              <IconButton onClick={() => removeComponentSauce(index)}><DeleteIcon /></IconButton>
+            </Box>
+          ))}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseSauceDialog}>Cancelar</Button>
-          <Button onClick={handleSaveSauce} variant="contained">Guardar Salsa</Button>
-        </DialogActions>
+        <DialogActions><Button onClick={handleCloseSauceDialog}>Cancelar</Button><Button onClick={handleSaveSauce} variant="contained">Guardar</Button></DialogActions>
       </Dialog>
+
+      {/* New Ingredient Dialog */}
+      <NewIngredientDialog 
+        open={openNewIngredientDialog} 
+        onClose={handleCloseNewIngredientDialog} 
+        onSave={handleSaveNewIngredient} 
+        initialName={newIngredientName} 
+      />
     </Container>
   );
-
 }

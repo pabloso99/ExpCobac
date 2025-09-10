@@ -73,6 +73,7 @@ const startServer = async () => {
 
     // Load routes
     console.log('--- Cargando rutas principales ---');
+    app.use('/api/auth', require('./src/routes/auth')); // Actualizar la ruta de login para que genere tokens de autenticación con el nuevo sistema de roles
     app.use('/api/auth', require('./src/routes/auth'));
     console.log('✔️ Ruta /api/auth montada');
     
@@ -86,6 +87,12 @@ const startServer = async () => {
     console.log('✔️ Users router importado');
     app.use('/api/users', usersRouter);
     console.log('✔️ Ruta /api/users montada');
+
+    app.use('/api/ingredients', require('./src/routes/ingredients'));
+    console.log('✔️ Ruta /api/ingredients montada');
+
+    app.use('/api/production', require('./src/routes/production'));
+    console.log('✔️ Ruta /api/production montada');
     console.log('--- Fin de carga de rutas principales ---');
 
     // Ruta de prueba para verificar que el servidor está funcionando

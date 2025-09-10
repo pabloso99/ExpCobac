@@ -5,10 +5,10 @@ import {
   Container,
   Box,
   Typography,
-  Button,
   Card,
   CardContent,
   Grid,
+  Paper
 } from '@mui/material';
 
 function Profile() {
@@ -17,6 +17,16 @@ function Profile() {
   
   // Debug: mostrar el estado del usuario en la consola
   console.log('Usuario en Profile:', user);
+
+  const getWelcomeMessage = () => {
+    if (!user || !user.roles) return 'Bienvenido';
+    if (user.roles.includes('admin')) return 'Bienvenido, Administrador';
+    if (user.roles.includes('chef')) return 'Bienvenido, Chef';
+    if (user.roles.includes('produc')) return 'Bienvenido, Producción';
+    if (user.roles.includes('compras')) return 'Bienvenido, Compras';
+    if (user.roles.includes('almacen')) return 'Bienvenido, Almacén';
+    return 'Bienvenido';
+  };
 
   return (
     <Container component="main" maxWidth="md">
@@ -29,12 +39,16 @@ function Profile() {
         }}
       >
         <Typography component="h1" variant="h4" gutterBottom>
-          Bienvenido
+          {getWelcomeMessage()}
         </Typography>
         <Card sx={{ maxWidth: 500, mt: 4 }}>
           <CardContent>
             <Grid container spacing={2}>
               <Grid item xs={12}>
+                  <Typography variant="h6">Email: {user?.email}</Typography>
+                  <Typography variant="body1" sx={{ mt: 1 }}>
+                    Roles: {(user?.roles || []).join(', ')}
+                  </Typography>
               </Grid>
             </Grid>
           </CardContent>
