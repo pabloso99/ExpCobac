@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Container, Typography, Button, Grid, Card, CardContent, CardActions, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Autocomplete } from '@mui/material';
+import { Box, Container, Typography, Button, Grid, Card, CardContent, CardActions, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Autocomplete, Alert } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { recipeService } from '../services/recipeService';
 import UnitSelect from '../components/UnitSelect';
@@ -14,7 +14,7 @@ const styles = {
 
 export default function Recipes() {
   const [recipes, setRecipes] = useState([]);
-
+  const [error, setError] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
   const [newRecipe, setNewRecipe] = useState({ title: '', description: '', ingredients: [{ ingredient: null, quantity: '', unit: 'g' }], sauces: [], portions: 1, steps: [''] });
