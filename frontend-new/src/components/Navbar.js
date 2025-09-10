@@ -24,7 +24,7 @@ import {
 
 const Navbar = () => {
   const navigate = useNavigate();
-  const { user, logout, hasRole } = useAuth();
+  const { logout, hasRole } = useAuth();
 
   const hasAdminRole = hasRole('admin');
   const hasChefRole = hasRole('chef');
@@ -32,8 +32,7 @@ const Navbar = () => {
   const hasComprasRole = hasRole('compras');
   const hasAlmacenRole = hasRole('almacen');
 
-  // Diagnostic log
-  console.log('[Navbar] Rendering with roles:', { hasAdminRole, hasChefRole });
+
   
   const theme = useTheme();
   const [anchorElUser, setAnchorElUser] = React.useState(null);
